@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Priority Waste · Commission Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root {
+  --yellow: #FFC20E;
+  --yellow-hover: #E5A800;
+  --yellow-soft: #FFF4CC;
+  --black: #000000;
+  --dark-gray: #333333;
+  --mid-gray: #666666;
+  --light-gray: #F4F4F4;
+  --line: #E0E0E0;
+  --white: #FFFFFF;
+  --chart-green: #2F7D3A;
+  --chart-red: #D93025;
+  --chart-yellow: #FFC20E;
+  --chart-black: #000000;
+  --chart-gray: #999999;
+  --bg: var(--white);
+  --ink: var(--black);
+  --muted: var(--mid-gray);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Roboto', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  font-weight: 400;
+}
+.display { font-family: 'Oswald', Impact, sans-serif; font-weight: 600; letter-spacing: 0.01em; }
+.mono { font-family: 'Roboto Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+body::before {
+  content: '';
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 4px; background: var(--yellow); z-index: 99;
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 40px 32px 32px 32px; }
+
+.eyebrow {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--muted); font-weight: 500;
+}
+
+.chip {
+  background: var(--black); color: var(--white);
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-weight: 500; padding: 4px 9px; display: inline-block;
+}
+.chip-warn { background: var(--yellow); color: var(--black); }
+.chip-red { background: var(--chart-red); color: var(--white); }
+
+.btn {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 12px 24px; border: 2px solid var(--black); cursor: pointer;
+  transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--black); color: var(--white);
+}
+.btn:hover { background: var(--yellow); color: var(--black); border-color: var(--black); }
+.btn-ghost { background: var(--white); color: var(--black); }
+.btn-ghost:hover { background: var(--black); color: var(--white); }
+
+.brand-bar {
+  background: var(--black); color: var(--white);
+  padding: 14px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.brand-logo {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700; font-size: 18px; letter-spacing: 0.12em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px;
+}
+.brand-logo-mark {
+  background: var(--yellow); color: var(--black);
+  padding: 3px 8px 2px 8px;
+  font-weight: 700; font-size: 14px; letter-spacing: 0.1em;
+}
+.brand-subtag {
+  font-family: 'Roboto', sans-serif;
+  font-size: 11px; color: #999; letter-spacing: 0.06em; text-transform: uppercase;
+}
+
+.upload-screen { min-height: calc(100vh - 4px); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.upload-inner { max-width: 640px; width: 100%; }
+.upload-headline {
+  font-family: 'Oswald', sans-serif;
+  font-size: 84px; line-height: 0.92; font-weight: 700; letter-spacing: -0.01em;
+  text-transform: uppercase; margin-bottom: 20px; color: var(--black); margin-top: 20px;
+}
+.upload-headline .yellow-mark { background: var(--yellow); padding: 0 10px 4px 10px; display: inline-block; }
+.upload-sub { color: var(--dark-gray); font-size: 16px; max-width: 520px; line-height: 1.55; }
+
+.drop-zone {
+  background: var(--light-gray); border: 2px solid var(--black);
+  padding: 36px; margin-bottom: 16px; margin-top: 40px; transition: all 0.15s;
+}
+.drop-zone.dragover { background: var(--yellow-soft); border-color: var(--yellow); }
+.drop-zone-row { display: flex; gap: 24px; align-items: flex-start; }
+.drop-zone-icon {
+  width: 56px; height: 56px; background: var(--yellow); color: var(--black);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; border: 2px solid var(--black);
+}
+.drop-zone-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.02em; margin-bottom: 4px;
+}
+.drop-zone-sub { color: var(--dark-gray); font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+
+.error-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; background: var(--chart-red); color: var(--white);
+  font-size: 13px; font-weight: 500; margin-bottom: 16px;
+}
+
+.info-banner {
+  display: flex; gap: 12px; padding: 16px 20px;
+  background: var(--yellow-soft); color: var(--black);
+  border-left: 6px solid var(--yellow);
+  margin-bottom: 32px; font-size: 13px; line-height: 1.55;
+}
+.info-banner strong {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600; display: block; margin-bottom: 4px;
+  font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.info-banner-details { color: var(--dark-gray); font-size: 12px; }
+
+.header-row {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding-bottom: 24px; border-bottom: 3px solid var(--black);
+  margin-bottom: 32px; gap: 24px;
+}
+.page-headline {
+  font-family: 'Oswald', sans-serif;
+  font-size: 52px; line-height: 0.95; font-weight: 700; letter-spacing: -0.01em;
+  text-transform: uppercase; color: var(--black);
+}
+.page-headline .yellow-mark { background: var(--yellow); padding: 0 8px 2px 8px; }
+.header-meta { margin-top: 14px; font-size: 13px; color: var(--dark-gray); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.format-tag {
+  background: var(--black); color: var(--yellow);
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-weight: 500; padding: 3px 9px;
+}
+
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  margin-bottom: 48px; border: 2px solid var(--black);
+}
+.kpi { padding: 24px 22px; background: var(--white); }
+.kpi:not(:first-child) { border-left: 1px solid var(--line); }
+.kpi.highlight { background: var(--yellow); }
+.kpi-label {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--mid-gray); font-weight: 500; margin-bottom: 14px;
+}
+.kpi.highlight .kpi-label { color: var(--black); }
+.kpi-value {
+  font-family: 'Oswald', sans-serif;
+  font-size: 40px; line-height: 1; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--black);
+}
+.kpi-sub { font-size: 11px; color: var(--mid-gray); font-family: 'Roboto Mono', monospace; margin-top: 10px; letter-spacing: 0.02em; }
+.kpi.highlight .kpi-sub { color: var(--dark-gray); }
+
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid var(--black);
+}
+.section-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.02em; color: var(--black);
+}
+
+.leaderboard { background: var(--white); border: 2px solid var(--black); margin-bottom: 48px; }
+.lb-head, .lb-row { display: grid; grid-template-columns: 50px 2.5fr 1.5fr 1.5fr 1.5fr 1.5fr; align-items: center; padding: 14px 20px; }
+.lb-head {
+  background: var(--black); color: var(--white);
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
+}
+.lb-row { border-bottom: 1px solid var(--line); cursor: pointer; transition: background 0.1s; padding: 16px 20px; background: var(--white); }
+.lb-row:hover { background: var(--yellow-soft); }
+.lb-row:last-child { border-bottom: none; }
+.lb-rank { color: var(--mid-gray); font-family: 'Roboto Mono', monospace; font-size: 13px; font-weight: 500; }
+.lb-name { font-weight: 500; font-size: 15px; color: var(--black); }
+.lb-meta { font-size: 11px; color: var(--mid-gray); margin-top: 3px; }
+.lb-num { text-align: right; font-family: 'Roboto Mono', monospace; font-size: 13px; font-variant-numeric: tabular-nums; }
+.lb-total { text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.lb-total-val { font-family: 'Oswald', sans-serif; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.chev { color: var(--black); }
+.dash { color: var(--line); }
+
+.insights-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.insights-card { background: var(--white); border: 2px solid var(--black); padding: 24px; }
+.bar-chart { margin-top: 8px; }
+.bar-row { display: grid; grid-template-columns: 90px 1fr 80px; align-items: center; gap: 12px; padding: 9px 0; font-size: 12px; }
+.bar-name { font-family: 'Roboto Mono', monospace; color: var(--dark-gray); font-size: 12px; font-weight: 500; }
+.bar-track { height: 24px; background: var(--light-gray); position: relative; overflow: hidden; border: 1px solid var(--line); }
+.bar-seg { height: 100%; float: left; transition: width 0.4s ease-out; }
+.bar-seg.nnb { background: var(--chart-green); }
+.bar-seg.addon { background: var(--chart-yellow); }
+.bar-val { text-align: right; font-family: 'Roboto Mono', monospace; font-size: 12px; font-weight: 500; }
+.legend { display: flex; gap: 24px; margin-top: 16px; font-size: 11px; color: var(--dark-gray); flex-wrap: wrap; font-weight: 500; }
+.legend-dot { width: 12px; height: 12px; display: inline-block; margin-right: 6px; vertical-align: middle; border: 1px solid var(--black); }
+
+.mix-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 12px; }
+.mix-bar { height: 12px; background: var(--light-gray); margin: 10px 0 18px 0; display: flex; overflow: hidden; border: 1px solid var(--black); }
+.mix-seg { height: 100%; }
+
+.stat-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--white); border: 2px solid var(--black); margin-top: 24px;
+}
+.stat-cell { padding: 22px 20px; }
+.stat-cell:not(:first-child) { border-left: 1px solid var(--line); }
+.stat-value { font-family: 'Oswald', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--black); }
+.stat-sub { font-size: 11px; color: var(--mid-gray); font-family: 'Roboto Mono', monospace; margin-top: 5px; }
+
+.footer-note { margin-top: 48px; padding-top: 20px; border-top: 2px solid var(--black); font-size: 11px; color: var(--mid-gray); line-height: 1.7; }
+
+.back-btn {
+  background: transparent; border: 2px solid var(--black); cursor: pointer;
+  font-family: 'Oswald', sans-serif; color: var(--black);
+  font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 8px 16px; margin-bottom: 28px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.back-btn:hover { background: var(--black); color: var(--yellow); }
+
+.rep-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding-bottom: 28px; border-bottom: 3px solid var(--black);
+  margin-bottom: 32px; gap: 24px;
+}
+.rep-name {
+  font-family: 'Oswald', sans-serif;
+  font-size: 64px; line-height: 0.95; font-weight: 700; letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+.rep-total-label { text-align: right; }
+.rep-total-val {
+  font-family: 'Oswald', sans-serif;
+  font-size: 60px; line-height: 0.95; font-weight: 700; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  background: var(--yellow); color: var(--black);
+  padding: 4px 14px 8px 14px; display: inline-block;
+}
+
+.insight-flags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
+.insight-flag {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--white); border: 1px solid var(--black);
+  font-size: 12px;
+}
+.insight-flag-text { color: var(--dark-gray); }
+
+.breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+.breakdown-card { background: var(--white); border: 2px solid var(--black); padding: 24px; }
+.breakdown-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--line); gap: 12px;
+}
+.breakdown-label { font-size: 13px; }
+.breakdown-sub { font-size: 11px; color: var(--mid-gray); margin-top: 3px; }
+.breakdown-val { font-family: 'Roboto Mono', monospace; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; }
+.breakdown-row.bold { border-bottom: 1px solid var(--black); }
+.breakdown-row.bold .breakdown-label { font-weight: 700; }
+.breakdown-row.bold .breakdown-val { font-size: 15px; font-weight: 700; }
+.breakdown-row.accent { background: var(--yellow-soft); margin: 0 -24px; padding-left: 24px; padding-right: 24px; border-top: 2px solid var(--yellow); border-bottom: 2px solid var(--yellow); }
+.breakdown-footer {
+  margin-top: 16px; padding-top: 16px; border-top: 3px solid var(--black);
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.breakdown-footer-label { font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.breakdown-footer-val { font-family: 'Oswald', sans-serif; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.line-items { background: var(--white); border: 2px solid var(--black); }
+.li-head, .li-row { display: grid; grid-template-columns: 3fr 1.5fr 1.5fr 1fr 1fr 1.5fr; align-items: center; padding: 12px 20px; gap: 12px; }
+.li-head {
+  background: var(--black); color: var(--white);
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
+}
+.li-row { border-bottom: 1px solid var(--line); font-size: 13px; }
+.li-row:last-child { border-bottom: none; }
+.li-row:hover { background: var(--light-gray); }
+.li-customer { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.li-term { font-family: 'Roboto Mono', monospace; font-size: 11px; color: var(--mid-gray); }
+.li-num { text-align: right; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 500; }
+.li-neg { color: var(--chart-red); font-weight: 700; }
+.li-flat { color: var(--mid-gray); font-style: italic; font-size: 11px; }
+
+@media (max-width: 768px) {
+  .container { padding: 32px 16px 16px 16px; }
+  .brand-bar { padding: 12px 16px; }
+  .upload-headline { font-size: 56px; }
+  .page-headline { font-size: 36px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi:nth-child(3), .kpi:nth-child(4) { border-top: 1px solid var(--line); }
+  .kpi:nth-child(3) { border-left: none; }
+  .insights-grid { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-cell:nth-child(3) { border-left: none; border-top: 1px solid var(--line); }
+  .stat-cell:nth-child(4) { border-top: 1px solid var(--line); }
+  .breakdown-grid { grid-template-columns: 1fr; }
+  .rep-header { flex-direction: column; align-items: flex-start; }
+  .rep-total-label { text-align: left; }
+  .rep-name { font-size: 40px; }
+  .rep-total-val { font-size: 44px; }
+  .lb-head, .lb-row { grid-template-columns: 40px 2fr 1.3fr; padding: 12px; font-size: 12px; }
+  .lb-head > div:nth-child(n+4), .lb-row > div:nth-child(n+4) { display: none; }
+  .lb-total-val { font-size: 18px; }
+  .li-head, .li-row { grid-template-columns: 2fr 1fr 1.2fr; padding: 10px 12px; }
+  .li-head > div:nth-child(n+4), .li-row > div:nth-child(n+4) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const SETTINGS = { underSubThreeCredit: 0.25, tempMinCount: 3, tempPayoutRate: 0.025, ancillaryThreshold: 125, ancillaryRate: 0.10 };
+const PAYOUT_TIERS = [[0,0],[2000,0],[2500,2000],[3000,2225],[3500,2500],[4000,2750],[4500,3000],[5000,4000],[6000,5000],[7000,6000],[8000,7000],[9000,8000],[10000,10000]];
+const THREE_PLUS_NEW = ['3 Year - New','4 Year - New','5 Year - New'];
+const THREE_PLUS_RENEW = ['3 Year - Retention','4 Year - Retention','5 Year - Retention','3 Year - Renewal','4 Year - Renewal','5 Year - Renewal'];
+const ONE_TWO_NEW = ['1 Year - New','2 Year - New'];
+const ONE_TWO_RENEW = ['1 Year - Retention','2 Year - Retention','1 Year - Renewal','2 Year - Renewal'];
+
+const CHART_COLORS = {
+  green: '#2F7D3A',
+  red: '#D93025',
+  yellow: '#FFC20E',
+  black: '#000000',
+  gray: '#999999',
+};
+
+function payoutLookup(nnb) { let r=0; for (const [t,p] of PAYOUT_TIERS) { if (nnb>=t) r=p; else break; } return r; }
+function num(v) { if (v==null||v==='') return 0; const n = typeof v==='number' ? v : parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+function str(v) { return v==null ? '' : String(v).trim(); }
+function getField(row, ...names) {
+  for (const n of names) {
+    if (row[n] !== undefined) return row[n];
+    const k = Object.keys(row).find(kk => kk.trim().toLowerCase() === n.trim().toLowerCase());
+    if (k) return row[k];
+  }
+  return undefined;
+}
+
+const CRM_REASON_MAP = {
+  'New Business - Temp': 'New Temp',
+  'New Business - Competition': 'New Perm',
+  'New Business - New Site': 'New Perm',
+  'New Business - New Owner': 'New Perm',
+  'Existing Account - New Location': 'New Perm',
+  'Renewal': 'Renewal',
+  'Service Increase- Perm': 'Service Increase - Perm',
+  'Service Increase - Perm': 'Service Increase - Perm',
+  'Price Decrease': 'Price Decrease',
+  'Lost Business': 'Lost Business',
+};
+const CRM_TERM_MAP = { '12 MONTHS':'1 Year', '24 MONTHS':'2 Year', '36 MONTHS':'3 Year', '48 MONTHS':'4 Year', '60 MONTHS':'5 Year' };
+
+function detectFormat(rows) {
+  if (rows.length === 0) return 'unknown';
+  const cols = Object.keys(rows[0]).map(c => c.trim().toLowerCase());
+  const has = (name) => cols.includes(name.toLowerCase());
+  if (has('Record Name') && has('Sales Rep Name') && has('Total Base Rate Value')) return 'crm';
+  if (has('Customer Name') && has('Sales Rep')) return 'data_import';
+  return 'unknown';
+}
+function normalizeCrmRow(r) {
+  const rawReason = str(getField(r, 'Reason Code'));
+  const mappedReason = CRM_REASON_MAP[rawReason] || rawReason;
+  const rateVal = num(getField(r, 'Total Base Rate Value'));
+  const initialTerm = str(getField(r, 'Initial Term')).toUpperCase();
+  const yearBase = CRM_TERM_MAP[initialTerm] || null;
+  let term = null;
+  if (yearBase) {
+    if (mappedReason === 'Renewal') term = `${yearBase} - Retention`;
+    else if (mappedReason === 'Lost Business') term = `${yearBase} - Lost`;
+    else term = `${yearBase} - New`;
+  }
+  const customer = str(getField(r, 'Record Name')).replace(/^Service Agreement with\s+/i, '');
+  return {
+    'Customer Name': customer,
+    'Sales Rep': str(getField(r, 'Sales Rep Name')),
+    'Market Area': str(getField(r, 'Market Area State')),
+    'Reason Code': mappedReason,
+    'Account #': '',
+    'Rate': mappedReason === 'New Temp' ? rateVal : 0,
+    'Monthly Revenue': mappedReason === 'New Temp' ? 0 : rateVal,
+    'Term': term,
+    'Net Difference': 0,
+    '# of Temp. Hauls': mappedReason === 'New Temp' ? 1 : 0,
+    'Ancillary Charges': 0,
+  };
+}
+function normalizeRows(rows) {
+  const format = detectFormat(rows);
+  if (format === 'crm') return { format, rows: rows.map(normalizeCrmRow) };
+  return { format, rows };
+}
+
+function computeCommission(rows, sourceFormat) {
+  let rev3New=0, rev3Renew=0, rev12New=0, rev12Renew=0, lost=0, svcIncrease=0;
+  let tempHaulsSum=0, tempRateSum=0, tempQualifyingRows=0, tempEconomicRevenue=0;
+  let ancillaryPayout=0, ancillaryGross=0;
+  let dealsNew=0, dealsRenewal=0, dealsTemp=0, dealsLost=0, dealsOther=0, flatRenewals=0;
+  const markets = new Set();
+
+  for (const r of rows) {
+    const reason = str(getField(r, 'Reason Code'));
+    const term = str(getField(r, 'Term'));
+    const monthlyRev = num(getField(r, 'Monthly Revenue'));
+    const netDiff = num(getField(r, 'Net Difference'));
+    const hauls = num(getField(r, '# of Temp. Hauls', '# of Temp. Hauls '));
+    const rate = num(getField(r, 'Rate'));
+    const anc = num(getField(r, 'Ancillary Charges'));
+    const market = str(getField(r, 'Market Area'));
+    if (market) markets.add(market);
+
+    if (THREE_PLUS_NEW.includes(term)) rev3New += monthlyRev;
+    if (ONE_TWO_NEW.includes(term)) rev12New += monthlyRev;
+    if (reason === 'Renewal' && THREE_PLUS_RENEW.includes(term)) rev3Renew += netDiff;
+    if (reason === 'Renewal' && ONE_TWO_RENEW.includes(term)) rev12Renew += netDiff;
+    if (reason === 'Renewal' && netDiff === 0) flatRenewals++;
+    if (reason === 'Lost Business') lost += monthlyRev;
+    if ((reason === 'Svc Increase' || reason === 'Service Increase - Perm') && netDiff > 0) svcIncrease += netDiff;
+    if (reason === 'New Temp' && hauls > SETTINGS.tempMinCount) { tempHaulsSum += hauls; tempRateSum += rate; tempQualifyingRows += 1; }
+    if (reason === 'New Temp') tempEconomicRevenue += rate * Math.max(hauls, 1);
+    if (anc > SETTINGS.ancillaryThreshold) { ancillaryPayout += (anc - SETTINGS.ancillaryThreshold) * SETTINGS.ancillaryRate; ancillaryGross += anc; }
+    if (reason === 'New Perm') dealsNew++;
+    else if (reason === 'Renewal') dealsRenewal++;
+    else if (reason === 'New Temp') dealsTemp++;
+    else if (reason === 'Lost Business') dealsLost++;
+    else if (reason) dealsOther++;
+  }
+
+  const rev3Total = rev3New + rev3Renew;
+  const rev12Total = rev12New + rev12Renew;
+  const creditedShort = rev12Total * SETTINGS.underSubThreeCredit;
+  const rawNNB = rev3Total + creditedShort - lost + svcIncrease;
+  const commissionableNNB = Math.max(0, rawNNB);
+  const monthlyPayout = payoutLookup(commissionableNNB);
+  const tempPayout = sourceFormat === 'crm' ? tempEconomicRevenue * SETTINGS.tempPayoutRate : tempHaulsSum * tempRateSum * SETTINGS.tempPayoutRate;
+  const totalAddons = tempPayout + ancillaryPayout;
+  const totalVariable = monthlyPayout + totalAddons;
+
+  return {
+    rev3New, rev3Renew, rev3Total, rev12New, rev12Renew, rev12Total, creditedShort,
+    lost, svcIncrease, rawNNB, commissionableNNB, monthlyPayout,
+    tempHaulsSum, tempRateSum, tempQualifyingRows, tempEconomicRevenue, tempPayout,
+    ancillaryPayout, ancillaryGross, totalAddons, totalVariable,
+    dealsNew, dealsRenewal, dealsTemp, dealsLost, dealsOther, flatRenewals,
+    totalDeals: dealsNew + dealsRenewal + dealsTemp + dealsLost + dealsOther,
+    markets: Array.from(markets), rowCount: rows.length,
+  };
+}
+
+const fmt$ = n => `$${(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const fmt$0 = n => `$${Math.round(n).toLocaleString('en-US')}`;
+const fmtPct = n => `${(n*100).toFixed(1)}%`;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+const state = { rawRows: [], fileName: '', sourceFormat: 'unknown', selectedRep: null, error: '' };
+
+const ICON = {
+  upload: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+  back: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  chev: `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`,
+  alert: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  info: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+};
+
+function renderBrandBar() {
+  return `
+    <div class="brand-bar">
+      <div class="brand-logo">
+        <span class="brand-logo-mark">PW</span>
+        <span>Priority Waste</span>
+      </div>
+      <div class="brand-subtag">Commission Dashboard</div>
+    </div>`;
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (state.rawRows.length === 0) { app.innerHTML = renderUpload(); attachUploadHandlers(); return; }
+  if (state.selectedRep) { app.innerHTML = renderBrandBar() + renderRepDetail(); attachRepHandlers(); return; }
+  app.innerHTML = renderBrandBar() + renderDashboard();
+  attachDashboardHandlers();
+}
+
+function renderUpload() {
+  return `
+  ${renderBrandBar()}
+  <div class="upload-screen">
+    <div class="upload-inner">
+      <span class="eyebrow">Monthly Compensation · Sales Ops</span>
+      <h1 class="upload-headline">Commission<br><span class="yellow-mark">Dashboard.</span></h1>
+      <p class="upload-sub">Upload your monthly sales export to compute commissionable NNB, tiered payouts, add-ons, and a per-rep breakdown — fast, reliable, in sync with the workbook logic.</p>
+
+      <div id="dropzone" class="drop-zone">
+        <div class="drop-zone-row">
+          <div class="drop-zone-icon">${ICON.upload}</div>
+          <div style="flex: 1;">
+            <div class="drop-zone-title">Drop CSV File Here</div>
+            <div class="drop-zone-sub">Or click to browse. Works with the CRM outside-sales export or the workbook's <span class="mono" style="font-size: 12px;">Data_Import</span> format.</div>
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+              <button class="btn" id="selectFileBtn">Select File</button>
+              <button class="btn btn-ghost" id="demoBtn">Try Demo Data</button>
+            </div>
+            <input type="file" accept=".csv" id="fileInput" style="display: none;">
+          </div>
+        </div>
+      </div>
+      ${state.error ? `<div class="error-banner">${ICON.alert}<span>${esc(state.error)}</span></div>` : ''}
+      <div style="margin-top: 40px; padding-top: 24px; border-top: 2px solid var(--black);">
+        <div class="eyebrow" style="margin-bottom: 12px;">Accepted Formats</div>
+        <div class="mono" style="font-size: 11px; color: var(--dark-gray); line-height: 1.9;">
+          <strong style="color: var(--black); font-weight: 700;">CRM export:</strong> Record Name · Sales Rep Name · Reason Code · Total Base Rate Value · Initial Term · Market Area State<br>
+          <strong style="color: var(--black); font-weight: 700;">Data_Import:</strong> Customer Name · Sales Rep · Reason Code · Rate · Monthly Revenue · Term · Net Difference · # of Temp. Hauls
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderFormatBanner() {
+  if (state.sourceFormat !== 'crm') return '';
+  return `
+  <div class="info-banner">
+    ${ICON.info}
+    <div>
+      <strong>CRM Export Detected — Mapped to Commission Schema</strong>
+      <div class="info-banner-details">
+        Reason codes translated (e.g. "New Business - Competition" → New Perm, "New Business - Temp" → New Temp). Initial Term mapped to Year / Retention. Total Base Rate Value treated as monthly revenue for permanent deals and engagement revenue for temp roll-offs. <strong style="font-weight: 700; color: var(--black);">Gaps:</strong> renewal Net Difference, haul counts, and ancillary charges aren't in this export — renewals with flat rates contribute $0 to NNB, and temp payout uses a per-row 2.5% of rate.
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDashboard() {
+  const repStats = aggregateRepStats();
+  const team = computeTeamTotals(repStats);
+
+  return `
+  <div class="container">
+    <div class="header-row">
+      <div>
+        <div class="eyebrow" style="margin-bottom: 10px;">Monthly Compensation Report</div>
+        <h1 class="page-headline">Team <span class="yellow-mark">Commission</span><br>Overview</h1>
+        <div class="header-meta">
+          <span class="mono">${esc(state.fileName)}</span>
+          <span>·</span>
+          <span>${state.rawRows.length} rows</span>
+          <span>·</span>
+          <span class="format-tag">${state.sourceFormat === 'crm' ? 'CRM Export' : state.sourceFormat === 'data_import' ? 'Data_Import' : 'Unknown'}</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost" id="resetBtn">← New Upload</button>
+    </div>
+
+    ${renderFormatBanner()}
+
+    <div class="kpi-grid">
+      ${kpi('Total Variable Payout', fmt$0(team.totalCommission), `${team.repCount} reps`)}
+      ${kpi('Team Commissionable NNB', fmt$0(team.totalNNB), `${team.totalDeals} deals`)}
+      ${kpi('Avg Commission / Rep', fmt$0(team.avgCommission), 'This period')}
+      ${kpi('Top Earner', team.topEarner.name.split(' ')[0], fmt$0(team.topEarner.totalVariable), true)}
+    </div>
+
+    <div class="section-head">
+      <h2 class="section-title">Leaderboard</h2>
+      <div class="eyebrow">Sorted by Total Payout</div>
+    </div>
+
+    <div class="leaderboard">
+      <div class="lb-head">
+        <div>Rank</div>
+        <div>Sales Rep</div>
+        <div style="text-align: right;">Comm. NNB</div>
+        <div style="text-align: right;">Tier Payout</div>
+        <div style="text-align: right;">Add-Ons</div>
+        <div style="text-align: right;">Total</div>
+      </div>
+      ${repStats.map((r, i) => `
+        <div class="lb-row" data-rep="${esc(r.name)}">
+          <div class="lb-rank">${String(i+1).padStart(2,'0')}</div>
+          <div>
+            <div class="lb-name">${esc(r.name)}</div>
+            <div class="lb-meta">${r.totalDeals} deals · ${esc(r.markets.join(', ') || '—')}</div>
+          </div>
+          <div class="lb-num">${fmt$0(r.commissionableNNB)}</div>
+          <div class="lb-num">${fmt$0(r.monthlyPayout)}</div>
+          <div class="lb-num">${r.totalAddons > 0 ? fmt$0(r.totalAddons) : '<span class="dash">—</span>'}</div>
+          <div class="lb-total">
+            <span class="lb-total-val">${fmt$0(r.totalVariable)}</span>
+            ${ICON.chev}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    ${renderTeamInsights(repStats, team)}
+
+    <div class="footer-note">
+      Payout tiers and constants sourced from the <span class="mono">Settings</span> sheet of the workbook. NNB logic mirrors the Calculator tab formulas (3+ year @ full credit, 1–2 year @ 25%, lost business adjustment, positive service change). Ancillary payouts auto-computed from charges exceeding $${SETTINGS.ancillaryThreshold} threshold at ${fmtPct(SETTINGS.ancillaryRate)} rate.
+    </div>
+  </div>`;
+}
+
+function kpi(label, value, sub, highlight) {
+  return `<div class="kpi${highlight ? ' highlight' : ''}"><div class="kpi-label">${label}</div><div class="kpi-value">${esc(value)}</div><div class="kpi-sub">${esc(sub)}</div></div>`;
+}
+
+function renderTeamInsights(repStats, team) {
+  const totalNNBPay = repStats.reduce((s, r) => s + r.monthlyPayout, 0);
+  const totalTempPay = repStats.reduce((s, r) => s + r.tempPayout, 0);
+  const totalAncPay = repStats.reduce((s, r) => s + r.ancillaryPayout, 0);
+
+  const topReps = repStats.slice(0, 10);
+  const maxBarVal = Math.max(...topReps.map(r => r.totalVariable), 1);
+
+  const dealMix = [
+    { name: 'New Perm', value: repStats.reduce((s, r) => s + r.dealsNew, 0), color: CHART_COLORS.green },
+    { name: 'Renewal', value: repStats.reduce((s, r) => s + r.dealsRenewal, 0), color: CHART_COLORS.yellow },
+    { name: 'New Temp', value: repStats.reduce((s, r) => s + r.dealsTemp, 0), color: CHART_COLORS.black },
+    { name: 'Lost', value: repStats.reduce((s, r) => s + r.dealsLost, 0), color: CHART_COLORS.red },
+    { name: 'Other', value: repStats.reduce((s, r) => s + r.dealsOther, 0), color: CHART_COLORS.gray },
+  ].filter(d => d.value > 0);
+  const mixTotal = dealMix.reduce((s, d) => s + d.value, 0) || 1;
+
+  return `
+  <div class="section-head" style="margin-top: 48px;">
+    <h2 class="section-title">Team Insights</h2>
+  </div>
+  <div class="insights-grid">
+    <div class="insights-card">
+      <div class="eyebrow" style="margin-bottom: 16px;">Payout Composition by Rep</div>
+      <div class="bar-chart">
+        ${topReps.map(r => {
+          const nnbPct = (r.monthlyPayout / maxBarVal) * 100;
+          const addonPct = (r.totalAddons / maxBarVal) * 100;
+          return `
+            <div class="bar-row">
+              <div class="bar-name">${esc(r.name.split(' ')[0])}</div>
+              <div class="bar-track">
+                <div class="bar-seg nnb" style="width: ${nnbPct}%"></div>
+                <div class="bar-seg addon" style="width: ${addonPct}%"></div>
+              </div>
+              <div class="bar-val">${fmt$0(r.totalVariable)}</div>
+            </div>`;
+        }).join('')}
+      </div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background: ${CHART_COLORS.green};"></span>Tier payout (NNB)</span>
+        <span><span class="legend-dot" style="background: ${CHART_COLORS.yellow};"></span>Add-ons (temp + ancillary)</span>
+      </div>
+    </div>
+
+    <div class="insights-card">
+      <div class="eyebrow" style="margin-bottom: 16px;">Deal Mix (Team)</div>
+      <div class="mix-bar">
+        ${dealMix.map(d => `<div class="mix-seg" style="width: ${(d.value/mixTotal)*100}%; background: ${d.color};"></div>`).join('')}
+      </div>
+      ${dealMix.map(d => `
+        <div class="mix-row">
+          <span style="font-weight: 500;"><span class="legend-dot" style="background: ${d.color};"></span>${d.name}</span>
+          <span class="mono" style="color: var(--dark-gray); font-size: 11px; font-weight: 500;">${d.value} (${Math.round((d.value/mixTotal)*100)}%)</span>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    ${statCell('Tier Payout Total', fmt$0(totalNNBPay), team.totalCommission ? fmtPct(totalNNBPay/team.totalCommission) : '—')}
+    ${statCell('Temp Roll-off Payout', fmt$0(totalTempPay), team.totalCommission ? fmtPct(totalTempPay/team.totalCommission) : '—')}
+    ${statCell('Ancillary Payout', fmt$0(totalAncPay), team.totalCommission ? fmtPct(totalAncPay/team.totalCommission) : '—')}
+    ${statCell('Avg Deal Size', team.totalDeals ? fmt$0(team.totalNNB/team.totalDeals) : '—', 'per deal')}
+  </div>`;
+}
+function statCell(label, value, sub) {
+  return `<div class="stat-cell"><div class="eyebrow" style="margin-bottom: 8px;">${label}</div><div class="stat-value">${esc(value)}</div><div class="stat-sub">${esc(sub)}</div></div>`;
+}
+
+function renderRepDetail() {
+  const repStats = aggregateRepStats();
+  const rep = repStats.find(r => r.name === state.selectedRep);
+  if (!rep) { state.selectedRep = null; render(); return ''; }
+
+  const insights = [];
+  if (rep.commissionableNNB >= 5000) insights.push({ label: 'Kicker Eligible', tone: 'ok', text: `Avg ≥ $5K threshold met (${fmt$0(rep.commissionableNNB)})` });
+  if (rep.commissionableNNB > 0 && rep.commissionableNNB < 2500) insights.push({ label: 'Below Tier Floor', tone: 'warn', text: `Need ${fmt$0(2500 - rep.commissionableNNB)} more NNB to unlock tier payout` });
+  if (rep.dealsTemp > 0) insights.push({ label: `${rep.dealsTemp} Temp ${rep.dealsTemp === 1 ? 'Deal' : 'Deals'}`, tone: 'ok', text: `${fmt$0(rep.tempEconomicRevenue || rep.tempRateSum)} in temp revenue` });
+  if (rep.flatRenewals > 0) insights.push({ label: `${rep.flatRenewals} Flat ${rep.flatRenewals === 1 ? 'Renewal' : 'Renewals'}`, tone: 'warn', text: 'No net-difference data → $0 NNB contribution' });
+  if (rep.dealsLost > 0) insights.push({ label: `${rep.dealsLost} Lost`, tone: 'warn', text: `${fmt$0(Math.abs(rep.lost))} in lost revenue` });
+  if (rep.rev3Total > 0 && rep.rev12Total > 0) {
+    const pct = rep.rev3Total / (rep.rev3Total + rep.rev12Total);
+    if (pct >= 0.7) insights.push({ label: 'Long-Term Mix', tone: 'ok', text: `${fmtPct(pct)} of new rev is 3+ year (full credit)` });
+    else if (pct <= 0.3) insights.push({ label: 'Short-Term Mix', tone: 'warn', text: `${fmtPct(1-pct)} of new rev is 1–2 year (25% credit)` });
+  }
+  if (rep.dealsNew === 0 && rep.dealsRenewal === 0 && rep.dealsTemp > 0) insights.push({ label: 'Temp-Only Month', tone: 'warn', text: 'No permanent new or renewal deals closed' });
+
+  const isCrm = state.sourceFormat === 'crm';
+  const tempPayoutLabel = isCrm ? `rate × 2.5% per row` : `hauls × rate × 2.5%`;
+  const tempPayoutSublabel = isCrm ? `${rep.dealsTemp} temp ${rep.dealsTemp === 1 ? 'deal' : 'deals'}` : `${rep.tempQualifyingRows} qualifying rows`;
+
+  return `
+  <div class="container">
+    <button class="back-btn" id="backBtn">${ICON.back} <span>Back to Team</span></button>
+
+    <div class="rep-header">
+      <div>
+        <div class="eyebrow" style="margin-bottom: 10px;">Sales Representative</div>
+        <h1 class="rep-name">${esc(rep.name)}</h1>
+        <div class="header-meta">
+          <span>${esc(rep.markets.join(', ') || '—')}</span>
+          <span>·</span>
+          <span>${rep.totalDeals} total line items</span>
+        </div>
+      </div>
+      <div class="rep-total-label">
+        <div class="eyebrow" style="margin-bottom: 10px;">Total Variable Payout</div>
+        <div class="rep-total-val">${fmt$0(rep.totalVariable)}</div>
+        <div class="mono" style="font-size: 11px; color: var(--mid-gray); margin-top: 10px;">Tier ${fmt$0(rep.monthlyPayout)} + Add-ons ${fmt$0(rep.totalAddons)}</div>
+      </div>
+    </div>
+
+    ${insights.length > 0 ? `
+      <div class="insight-flags">
+        ${insights.map(ins => `
+          <div class="insight-flag">
+            <span class="chip ${ins.tone === 'warn' ? 'chip-warn' : ''}">${esc(ins.label)}</span>
+            <span class="insight-flag-text">${esc(ins.text)}</span>
+          </div>`).join('')}
+      </div>` : ''}
+
+    <div class="breakdown-grid">
+      <div class="breakdown-card">
+        <div class="eyebrow" style="margin-bottom: 16px;">Monthly NNB Calculation</div>
+        ${breakRow('3+ year (full credit)', `${fmt$0(rep.rev3New)} new + ${fmt$0(rep.rev3Renew)} renewal net Δ`, fmt$(rep.rev3Total))}
+        ${breakRow('1–2 year (25% credit)', `${fmt$0(rep.rev12New)} new + ${fmt$0(rep.rev12Renew)} renewal net Δ`, fmt$(rep.rev12Total))}
+        ${breakRow('Credited <36-mo business', '@ 25%', fmt$(rep.creditedShort))}
+        ${breakRow('Lost business', '', fmt$(rep.lost), rep.lost < 0 ? 'red' : '')}
+        ${rep.svcIncrease > 0 ? breakRow('Positive service change', '', fmt$(rep.svcIncrease)) : ''}
+        ${breakRow('Raw monthly NNB', '', fmt$(rep.rawNNB), '', true)}
+        ${breakRow('Commissionable NNB', 'Used for tier lookup', fmt$(rep.commissionableNNB), 'accent', true)}
+        <div class="breakdown-footer">
+          <div class="breakdown-footer-label">Monthly NNB Tier Payout</div>
+          <div class="breakdown-footer-val">${fmt$0(rep.monthlyPayout)}</div>
+        </div>
+      </div>
+
+      <div class="breakdown-card">
+        <div class="eyebrow" style="margin-bottom: 16px;">Add-Ons</div>
+        ${isCrm
+          ? breakRow('Temp engagement revenue', tempPayoutSublabel, fmt$(rep.tempEconomicRevenue))
+          : breakRow('Temp roll-off hauls', tempPayoutSublabel, String(Math.round(rep.tempHaulsSum)))
+        }
+        ${!isCrm ? breakRow('Temp roll-off rate (sum)', '', fmt$(rep.tempRateSum)) : ''}
+        ${breakRow('Temp roll-off payout', tempPayoutLabel, fmt$(rep.tempPayout), '', true)}
+        ${breakRow('Ancillary charges (gross)', '', fmt$(rep.ancillaryGross))}
+        ${breakRow('Ancillary payout', `${fmtPct(SETTINGS.ancillaryRate)} over $${SETTINGS.ancillaryThreshold} threshold`, fmt$(rep.ancillaryPayout), '', true)}
+        <div class="breakdown-footer">
+          <div class="breakdown-footer-label">Total Add-Ons</div>
+          <div class="breakdown-footer-val">${fmt$0(rep.totalAddons)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <h2 class="section-title" style="font-size: 22px;">Line Items</h2>
+      <div class="eyebrow">${rep.rows.length} Rows</div>
+    </div>
+    <div class="line-items">
+      <div class="li-head">
+        <div>Customer</div>
+        <div>Reason</div>
+        <div>Term</div>
+        <div style="text-align: right;">Rate</div>
+        <div style="text-align: right;">Hauls</div>
+        <div style="text-align: right;">Revenue / Δ</div>
+      </div>
+      ${rep.rows.map(r => {
+        const customer = str(getField(r, 'Customer Name')) || '—';
+        const reason = str(getField(r, 'Reason Code')) || '—';
+        const term = str(getField(r, 'Term')) || '—';
+        const rate = num(getField(r, 'Rate'));
+        const hauls = num(getField(r, '# of Temp. Hauls', '# of Temp. Hauls '));
+        const monthlyRev = num(getField(r, 'Monthly Revenue'));
+        const diff = num(getField(r, 'Net Difference'));
+        const displayRev = reason === 'Renewal' ? diff : monthlyRev;
+        const showFlatRenewal = reason === 'Renewal' && diff === 0 && monthlyRev > 0;
+        const chipClass = reason === 'Lost Business' ? 'chip chip-red' : reason === 'Renewal' ? 'chip chip-warn' : 'chip';
+        const revDisplay = showFlatRenewal
+          ? `<span class="li-flat" title="Renewal without net-difference data">${fmt$0(monthlyRev)} flat</span>`
+          : displayRev
+            ? `<span class="${displayRev < 0 ? 'li-neg' : ''}">${fmt$(displayRev)}</span>`
+            : '—';
+        return `
+          <div class="li-row">
+            <div class="li-customer" title="${esc(customer)}">${esc(customer)}</div>
+            <div><span class="${chipClass}">${esc(reason)}</span></div>
+            <div class="li-term">${term !== '—' ? esc(term) : '—'}</div>
+            <div class="li-num">${rate ? fmt$0(rate) : '—'}</div>
+            <div class="li-num">${hauls || '—'}</div>
+            <div class="li-num">${revDisplay}</div>
+          </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+function breakRow(label, sub, value, tone, bold) {
+  if (!label) return '';
+  const toneStyle = tone === 'red' ? 'style="color: var(--chart-red); font-weight: 700;"' : tone === 'muted' ? 'style="color: var(--mid-gray);"' : '';
+  const rowClass = `breakdown-row${bold ? ' bold' : ''}${tone === 'accent' ? ' accent' : ''}`;
+  return `
+    <div class="${rowClass}">
+      <div>
+        <div class="breakdown-label">${esc(label)}</div>
+        ${sub ? `<div class="breakdown-sub">${esc(sub)}</div>` : ''}
+      </div>
+      <div class="breakdown-val" ${toneStyle}>${esc(value)}</div>
+    </div>`;
+}
+
+function aggregateRepStats() {
+  const grouped = {};
+  for (const r of state.rawRows) {
+    const rep = str(getField(r, 'Sales Rep'));
+    if (!rep) continue;
+    (grouped[rep] ||= []).push(r);
+  }
+  return Object.entries(grouped)
+    .map(([name, rows]) => ({ name, rows, ...computeCommission(rows, state.sourceFormat) }))
+    .sort((a, b) => b.totalVariable - a.totalVariable);
+}
+function computeTeamTotals(repStats) {
+  if (repStats.length === 0) return null;
+  return {
+    totalCommission: repStats.reduce((s, r) => s + r.totalVariable, 0),
+    totalNNB: repStats.reduce((s, r) => s + r.commissionableNNB, 0),
+    totalDeals: repStats.reduce((s, r) => s + r.totalDeals, 0),
+    avgCommission: repStats.reduce((s, r) => s + r.totalVariable, 0) / repStats.length,
+    topEarner: repStats[0],
+    repCount: repStats.length,
+  };
+}
+
+function attachUploadHandlers() {
+  const input = document.getElementById('fileInput');
+  const selectBtn = document.getElementById('selectFileBtn');
+  const demoBtn = document.getElementById('demoBtn');
+  const drop = document.getElementById('dropzone');
+  selectBtn.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+  demoBtn.addEventListener('click', loadDemo);
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+}
+function attachDashboardHandlers() {
+  document.querySelectorAll('.lb-row').forEach(row => {
+    row.addEventListener('click', () => { state.selectedRep = row.dataset.rep; render(); window.scrollTo(0, 0); });
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    state.rawRows = []; state.fileName = ''; state.sourceFormat = 'unknown';
+    state.selectedRep = null; state.error = '';
+    render();
+  });
+}
+function attachRepHandlers() {
+  document.getElementById('backBtn').addEventListener('click', () => { state.selectedRep = null; render(); window.scrollTo(0, 0); });
+}
+
+function handleFile(file) {
+  state.error = ''; state.fileName = file.name;
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true, dynamicTyping: false,
+    transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
+    complete: (results) => {
+      const { format, rows: normalized } = normalizeRows(results.data);
+      const rows = normalized.filter(r => str(getField(r, 'Sales Rep')));
+      if (rows.length === 0) {
+        state.error = format === 'unknown'
+          ? 'Unrecognized CSV format. Expected either the CRM outside-sales export or the Data_Import layout.'
+          : 'No rows with a Sales Rep value were found.';
+        render(); return;
+      }
+      state.rawRows = rows; state.sourceFormat = format; state.selectedRep = null;
+      render();
+    },
+    error: (err) => { state.error = `Parse error: ${err.message}`; render(); },
+  });
+}
+function loadDemo() {
+  Papa.parse(DEMO_CSV, {
+    header: true, skipEmptyLines: true, dynamicTyping: false,
+    complete: (results) => {
+      const { format, rows: normalized } = normalizeRows(results.data);
+      state.rawRows = normalized.filter(r => str(getField(r, 'Sales Rep')));
+      state.fileName = 'Demo data — February (3 reps, CRM format)';
+      state.sourceFormat = format; state.selectedRep = null;
+      render();
+    },
+  });
+}
+
+const DEMO_CSV = `Record Name,Stage Index,Stage,Reason Code,Service Type,Sales Rep Name,Total Base Rate Value,Effective Date,Expiration Date,Market Area State,Initial Term
+Service Agreement with Banks Vacuum,4,completed,New Business - Competition,FEL COMMERCIAL,Janeen OToole,$598,2026-02-23,2029-02-22,MI,36 MONTHS
+Service Agreement with J.A. BRADSHAW CONSTRUCTION,4,completed,New Business - Temp,TEMP ROLL-OFF,Hunter Czymbor,$495,2026-03-02,2026-03-12,MI,MONTH TO MONTH
+Service Agreement with City of Lawrence,4,completed,New Business - Temp,TEMP ROLL-OFF,Alex Lapinski,$275,2026-02-13,,IN,MONTH TO MONTH
+Service Agreement with Shain Roofing,4,completed,New Business - Temp,TEMP ROLL-OFF,Janeen OToole,$2125,2026-02-18,2026-05-17,MI,MONTH TO MONTH
+Service Agreement with MAKINO INC,4,completed,New Business - Competition,FEL COMMERCIAL,Hunter Czymbor,$105,2026-02-09,2029-02-08,MI,36 MONTHS
+Service Agreement with Bradley Cramer,4,completed,New Business - Temp,TEMP ROLL-OFF,Hunter Czymbor,$390,2026-02-10,,MI,MONTH TO MONTH
+Service Agreement with PLYMOUTH DONUTS INC,4,completed,Renewal,FEL COMMERCIAL,Hunter Czymbor,$425,2026-02-05,2029-02-04,MI,36 MONTHS
+Service Agreement with CRABS LLC,4,completed,New Business - New Site,FEL COMMERCIAL,Janeen OToole,$235,2026-02-12,2029-02-11,MI,36 MONTHS
+Service Agreement with INDEPENDENT CARPET ONE,4,completed,Price Decrease,FEL COMMERCIAL,Janeen OToole,$75,2026-02-01,2031-01-31,MI,60 MONTHS
+Service Agreement with QUAD TECH INC,4,completed,Service Increase- Perm,FEL COMMERCIAL,Janeen OToole,$50,2026-02-03,2027-02-02,MI,12 MONTHS
+Service Agreement with Bill Haus Homes,4,completed,New Business - Temp,TEMP ROLL-OFF,Hunter Czymbor,$375,2026-02-14,,MI,MONTH TO MONTH
+Service Agreement with SPRING HAVEN APARTMENTS,4,completed,New Business - Temp,TEMP ROLL-OFF,Hunter Czymbor,$430,2026-02-15,,MI,MONTH TO MONTH
+Service Agreement with BIG PROPERTY LLC,4,completed,New Business - New Owner,FEL COMMERCIAL,Hunter Czymbor,$78,2026-02-16,2031-02-15,MI,60 MONTHS
+Service Agreement with Baths R Us,4,completed,New Business - New Site,FEL COMMERCIAL,Janeen OToole,$395,2026-02-17,2027-02-16,MI,12 MONTHS
+Service Agreement with ORSA Credit Union,4,completed,New Business - New Site,FEL COMMERCIAL,Janeen OToole,$560,2026-02-18,2028-02-17,MI,24 MONTHS
+Service Agreement with FC Pride,4,completed,New Business - Temp,TEMP ROLL-OFF,Alex Lapinski,$375,2026-02-19,,IN,MONTH TO MONTH
+Service Agreement with Haus Homes,4,completed,New Business - New Owner,FEL COMMERCIAL,Hunter Czymbor,$415,2026-02-20,,MI,MONTH TO MONTH
+Service Agreement with SLATS ENTERPRISES,4,completed,New Business - Temp,TEMP ROLL-OFF,Hunter Czymbor,$375,2026-02-21,,MI,MONTH TO MONTH
+Service Agreement with Shanas INC,4,completed,Renewal,FEL COMMERCIAL,Hunter Czymbor,$180,2026-02-22,2029-02-21,MI,36 MONTHS
+Service Agreement with CONSERVICE,4,completed,Renewal,FEL COMMERCIAL,Janeen OToole,$14264.36,2026-02-23,2029-02-22,MI,36 MONTHS
+Service Agreement with Schoenherr Auto Repair,4,completed,New Business - New Owner,FEL COMMERCIAL,Hunter Czymbor,$65,2026-02-24,2029-02-23,MI,36 MONTHS
+Service Agreement with Z on Halyard,4,completed,New Business - New Site,FEL COMMERCIAL,Janeen OToole,$70,2026-02-25,,MI,MONTH TO MONTH
+Service Agreement with Pure Mini Mart,4,completed,New Business - New Owner,FEL COMMERCIAL,Hunter Czymbor,$105,2026-02-26,2031-02-25,MI,60 MONTHS
+Service Agreement with Shores Capital,4,completed,New Business - New Owner,FEL COMMERCIAL,Hunter Czymbor,$430,2026-02-27,2027-02-26,MI,12 MONTHS
+Service Agreement with THUNDER BAY ASSOCIATION,4,completed,Renewal,FEL COMMERCIAL,Hunter Czymbor,$2448.16,2026-02-28,2029-02-27,MI,36 MONTHS
+Service Agreement with NOVI LASER,4,completed,New Business - Competition,FEL COMMERCIAL,Janeen OToole,$105,2026-03-01,2029-02-28,MI,36 MONTHS
+Service Agreement with EZ FUEL MART,4,completed,New Business - New Owner,FEL COMMERCIAL,Hunter Czymbor,$120,2026-03-02,2031-03-01,MI,60 MONTHS
+Service Agreement with J.A. BRADSHAW (2),4,completed,New Business - Temp,TEMP ROLL-OFF,Hunter Czymbor,$495,2026-03-03,2026-03-13,MI,MONTH TO MONTH
+Service Agreement with McCrea Property Group,4,completed,New Business - New Site,FEL COMMERCIAL,Alex Lapinski,$148.09,2026-03-04,2031-03-03,IN,60 MONTHS
+Service Agreement with PRECISION EPOXY,4,completed,New Business - Temp,TEMP ROLL-OFF,Janeen OToole,$1200,2026-03-05,,MI,MONTH TO MONTH
+Service Agreement with Town of McCordsville,4,completed,New Business - Temp,TEMP ROLL-OFF,Alex Lapinski,$440,2026-03-06,,IN,MONTH TO MONTH
+Service Agreement with VITAL HEALTH,4,completed,New Business - New Site,FEL COMMERCIAL,Hunter Czymbor,$55,2026-03-07,2029-03-06,MI,36 MONTHS
+Service Agreement with REBEKAH'S,4,completed,Renewal,FEL COMMERCIAL,Hunter Czymbor,$140,2026-03-08,2029-03-07,MI,36 MONTHS
+Service Agreement with PAPA'S PIZZA,4,completed,Renewal,FEL COMMERCIAL,Hunter Czymbor,$105,2026-03-09,2029-03-08,MI,36 MONTHS
+Service Agreement with Kyle Jahnke,4,completed,New Business - Temp,TEMP ROLL-OFF,Hunter Czymbor,$390,2026-03-10,,MI,MONTH TO MONTH
+Service Agreement with Caleb Renner,4,completed,New Business - Temp,TEMP ROLL-OFF,Hunter Czymbor,$375,2026-03-11,,MI,MONTH TO MONTH
+Service Agreement with Bowling Frog LLC,4,completed,New Business - New Site,FEL COMMERCIAL,Alex Lapinski,$22,2026-03-12,2031-03-11,IN,60 MONTHS`;
+
+render();
+</script>
+</body>
+</html>
